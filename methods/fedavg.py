@@ -2,8 +2,6 @@ import torch
 from methods.base import Base_Client, Base_Server
 
 class Client(Base_Client):
-    # super의 init을 한번 실행하고 아래 코드도 실행
-    # 부모 class의 함수는 모두 가지고 있음 
     def __init__(self, client_dict, args):
         super().__init__(client_dict, args)
         self.model = self.model_type(self.num_classes).to(self.device)

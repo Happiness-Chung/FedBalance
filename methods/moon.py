@@ -21,7 +21,6 @@ class PNB_loss():
         self.mu = 5.0
         self.dataset = dataset
         self.pos_freq = np.array(pos_freq)
-        print("Pos: ", self.pos_freq)
         self.neg_freq = np.array(neg_freq)
         self.pos_weights = self.get_inverse_effective_number(self.beta, self.pos_freq)
         self.neg_weights = self.get_inverse_effective_number(self.beta, self.neg_freq)       
@@ -35,12 +34,9 @@ class PNB_loss():
         print("Pos weight : ", self.pos_weights)
         print("Neg weight : ", self.neg_weights)
 
-        # print("neg effective num : ", self.neg_weights)
-
     def get_inverse_effective_number(self, beta, freq): # beta is same for all classes
         sons = np.array(freq) / self.alpha # scaling factor
         for c in range(len(freq)):
-            # print("Client",c," number: ", freq[c])
             for i in range(len(freq[0])):
                 if freq[c][i] == 0:
                     freq[c][i] = 1
@@ -72,12 +68,10 @@ class PNB_loss():
                 loss_pos =  -1 * torch.mean(self.pos_weights[client_idx][i] * y_true[:, i] * torch.log(sigmoid(y_pred[:, i]) + epsilon))
                 loss_neg =  -1 * torch.mean(self.neg_weights[client_idx][i] * (1 - y_true[:, i]) * torch.log(1 -sigmoid( y_pred[:, i]) + epsilon))
                 loss += self.mu * self.pos_weights[client_idx][i] * (loss_pos + loss_neg)
-                # loss = (1 / self.neg_weights[i]) * loss * 0.05
         else : 
             for i in range(len(y_true)):
                 loss_pos =  -1 * (torch.log(y_pred[i][y_true[i]] + epsilon))
                 loss += self.mu * self.pos_weights[client_idx][y_true[i]] * loss_pos
-                # self.pos_weights[client_idx][y_true[i]] * 
             loss /= len(y_true)
         return loss
 
@@ -137,10 +131,10 @@ class Client(Base_Client):
         for epoch in range(self.args.epochs):
             batch_loss = []
             for batch_idx, (x, target) in enumerate(self.train_dataloader):
-                # logging.info(x.shape)
+
                 x= x.to(self.device)
                 self.optimizer.zero_grad()
-                #####
+
                 pro1, out = self.model(x)
                 pro2, _ = self.global_model(x)
 
@@ -167,11 +161,9 @@ class Client(Base_Client):
 
 
                 loss2 = self.args.mu * self.criterion2(logits, labels)
-
-                # loss1 = self.criterion(out, target)
                 
                 loss = loss1 + loss2
-                #####
+
                 loss.backward()
                 self.optimizer.step()
                 batch_loss.append(loss.item())
@@ -236,7 +228,7 @@ class Server(Base_Server):
         self.imbalance_weights = server_dict['imbalances']
     
     def operations(self, client_info):
-        client_info.sort(key=lambda tup: tup['client_index']) # 뒤죽박죽된 client_info를 client의 index 순으로 정렬 (1 ~)
+        client_info.sort(key=lambda tup: tup['client_index']) 
         client_sd = [c['weights'] for c in client_info] # clients' number of weights
         ################################################################################################
         if self.harmony == 'y':
@@ -256,7 +248,7 @@ class Server(Base_Server):
         if self.args.save_client:
             for client in client_info:
                 torch.save(client['weights'], '{}/client_{}.pt'.format(self.save_path, client['client_index']))
-        return [self.model.cpu().state_dict() for x in range(self.args.thread_number)] # thread의 갯수만큼 server의 모델을 복사해서 반환
+        return [self.model.cpu().state_dict() for x in range(self.args.thread_number)] 
 
 
     def run(self, received_info):

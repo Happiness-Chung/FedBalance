@@ -109,10 +109,10 @@ def set_random_seed(seed=1):
 def init_process(q, Client):
     # q is the client info
     set_random_seed()
-    global client # 새롭게 클라이언트를 전역으로 선언
+    global client 
     # c0 is a client_dict
     # c1 is the namespace
-    ci = q.get() # Queued에서 맨 앞의 원소를 하나 가져오고 remove
+    ci = q.get() 
     client = Client(ci[0], ci[1]) 
 
 def run_clients(received_info):
@@ -123,18 +123,18 @@ def run_clients(received_info):
         return None
 
 def allocate_clients_to_threads(args):
-    mapping_dict = defaultdict(list) # default 값이 list인 dictionary
-    for round in range(args.comm_round): # 각 communication round마다 thread를 할당 해 줌
-        if args.client_sample<1.0: # 여러 클라이언트들 중에서 sampling하여 트레이닝을 진행하는 경우
+    mapping_dict = defaultdict(list) 
+    for round in range(args.comm_round): 
+        if args.client_sample<1.0:
             num_clients = int(args.client_number*args.client_sample)
             client_list = random.sample(range(args.client_number), num_clients)
-        else: # 주어진 클라이언트를 모두 사용하는 경우
+        else: 
             num_clients = args.client_number
             client_list = list(range(num_clients))
         if num_clients % args.thread_number==0 and num_clients>0:
-            clients_per_thread = int(num_clients/args.thread_number) # 클라이언트 1명당 스레드 보통 1개 할당
+            clients_per_thread = int(num_clients/args.thread_number) 
             for c, t in enumerate(range(0, num_clients, clients_per_thread)):
-                idxs = [client_list[x] for x in range(t, t+clients_per_thread)] # 앞에서 부터 차례대로 할당
+                idxs = [client_list[x] for x in range(t, t+clients_per_thread)] 
                 mapping_dict[c].append(idxs)
         else:
             raise ValueError("Sampled client number not divisible by number of threads")
@@ -153,19 +153,9 @@ if __name__ == "__main__":
     ###################################### get data
     train_data_num, test_data_num, train_data_global, test_data_global, data_local_num_dict, train_data_local_dict, test_data_local_dict,\
          class_num, client_pos_freq, client_neg_freq, client_imbalances = dl.load_partition_data(args.data_dir, args.partition_method, args.partition_alpha, args.client_number, args.batch_size)
-    print(client_imbalances)
-    
-    # train_data_num = 50000
-    # test_data_num = 312
-    # train_data_global, test_data_global = global train, test dataloader
-    # data_local_num_dict = each clients' number of data
-    # train_data_local_dict, test_data_local_dict = each clients' train, test dataloader
 
-    mapping_dict = allocate_clients_to_threads(args) # client에게 할당된 thread number
+    mapping_dict = allocate_clients_to_threads(args) 
     print("Client allocation for the threads during commication round : ", mapping_dict)
-    # {0: [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]] ...
-    # init method and model type
-    # client를 여러개 생성하지 않았다는 특징이 있음
     if args.method=='fedavg':
         Server = fedavg.Server
         Client = fedavg.Client
@@ -216,24 +206,20 @@ if __name__ == "__main__":
     
     #init nodes
     client_info = Queue()
-    for i in range(args.thread_number):# thread의 갯수 만큼 client dict와 args를 복사해서 생성해서 client_info에 넣어준다
+    for i in range(args.thread_number):
         client_info.put((client_dict[i], args))
     # the length of the client info is the number of threads
 
     ######################################################
     # Start server and get initial outputs
     pool = cm.MyPool(args.thread_number, init_process, (client_info, Client)) 
-    # thread의 갯수 만큼 init_process 실행(일종의 멀티 프로세스 초기화 함수)
-    # args.thread_number : 현재 시스템에서 사용할 프로세스의 갯수
-    # thread 갯수 만큼의 client_dict와 client객체 하나를 인수로 넘겨줌 
-    # -> thread 갯수 만큼의 client 생성
     # init server
     server_dict['save_path'] = '{}/logs/{}__{}__{}_e{}_c{}'.format(os.getcwd(), args.dataset, time.strftime("%Y%m%d_%H%M%S"), args.method, args.epochs, args.client_number)
     if not os.path.exists(server_dict['save_path']):
         os.makedirs(server_dict['save_path'])
     server = Server(server_dict, args) # Server initializaion
     # methods.fedavg.Server object
-    server_outputs = server.start() ########### Server의 모델을 반환
+    server_outputs = server.start() 
     # weight of the server
     # Start Federated Training
     # the length is the number of treads
@@ -242,13 +228,12 @@ if __name__ == "__main__":
         logging.info('***** Round: {} ************************'.format(r))
         round_start = time.time()
         # server output length :        
-        # map 함수는 자체적으로 iteration 기능이 포함되어있어서 thread에 갯수만큼 server output을 하나씩 run_client에 넣어주면서 thread의 갯수만큼 실행됨
-        client_outputs = pool.map(run_clients, server_outputs) # 함수 하나와 그 함수가 프로세스의 갯수만큼 실행되는동안 하나씩 들어갈 인수 리스트
-        client_outputs = [c for sublist in client_outputs for c in sublist]  ##########자세히 client output form 확인 요망
+        client_outputs = pool.map(run_clients, server_outputs) 
+        client_outputs = [c for sublist in client_outputs for c in sublist]  
         # sublist : 'weights': OrderedDict
         # length : the number of clients
         # c is the weight of a client   
-        server_outputs = server.run(client_outputs) # client_output에 imbalance를 집어 넣는 것도 좋을 듯
+        server_outputs = server.run(client_outputs) 
         round_end = time.time()
         total_sec = round_end-round_start
         total_min = (total_sec) // 60

@@ -26,12 +26,11 @@ class Base_Client():
         # If you want to customize how to state dict is loaded you can do so here
         self.model.load_state_dict(server_state_dict)
     
-    def run(self, received_info): # thread의 갯수 만큼 실행됨
+    def run(self, received_info): 
         # recieved info : a server model weights(OrderedDict)
         # one globally merged model's parameter
         client_results = []
         for client_idx in self.client_map[self.round]: # round is the index of communication round
-            # 한 tread에 할당된 client의 index가 매 round마다 들어있음.
             self.load_client_state_dict(received_info) 
             self.train_dataloader = self.train_data[client_idx] # among dataloader, pick one
             self.test_dataloader = self.test_data[client_idx]
@@ -47,7 +46,6 @@ class Base_Client():
 
         self.round += 1
         return client_results # clients' number of weights 
-        # 하나의 thread에 할당된 client의 갯수 만큼의 client_result가 반환됨
         
     def train(self):
         # train the local model
@@ -162,7 +160,7 @@ class Base_Server():
             out_file.write(out_str)
 
     def operations(self, client_info):
-        client_info.sort(key=lambda tup: tup['client_index']) # 뒤죽박죽된 client_info를 client의 index 순으로 정렬 (1 ~)
+        client_info.sort(key=lambda tup: tup['client_index']) 
         client_sd = [c['weights'] for c in client_info] # clients' number of weights
         ################################################################################################
         cw = [c['num_samples']/sum([x['num_samples'] for x in client_info]) for c in client_info]
@@ -174,7 +172,7 @@ class Base_Server():
         if self.args.save_client:
             for client in client_info:
                 torch.save(client['weights'], '{}/client_{}.pt'.format(self.save_path, client['client_index']))
-        return [self.model.cpu().state_dict() for x in range(self.args.thread_number)] # thread의 갯수만큼 server의 모델을 복사해서 반환
+        return [self.model.cpu().state_dict() for x in range(self.args.thread_number)] 
 
     def test(self):
         self.model.to(self.device)
@@ -207,9 +205,6 @@ class Base_Server():
                     correct = predicted.eq(target).sum()
                     test_correct += correct.item()
                     test_sample_number += target.size(0)
-
-                
-                # test_loss += loss.item() * target.size(0)
                 
             acc = (test_correct / test_sample_number)*100
             if self.args.dataset == 'NIH' or self.args.dataset == 'CheXpert':

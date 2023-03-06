@@ -156,19 +156,7 @@ class NIHTrainDataset(Dataset):
     
         self.imbalance = 1 / difference_cnt.sum()
 
-        # Plot the disease distribution
-        self.all_classes = ['Cardiomegaly','Emphysema','Effusion','Hernia','Infiltration','Mass','Nodule','Atelectasis','Pneumothorax','Pleural_Thickening','Pneumonia','Fibrosis','Edema','Consolidation']
-        plt.figure(figsize=(8,4))
-        plt.title('Client{} Disease Distribution'.format(c_num), fontsize=20)
-        plt.bar(self.all_classes,self.total_ds_cnt)
-        plt.tight_layout()
-        plt.gcf().subplots_adjust(bottom=0.40)
-        plt.xticks(rotation = 90)
-        plt.xlabel('Diseases')
-        plt.savefig('C:/Users/hb/Desktop/code/3.FedBalance_mp/data/NIH/Client{}_disease_distribution.png'.format(c_num))
-        plt.clf()
-
-    def get_ds_cnt(self, c_num):
+    def get_ds_cnt(self):
 
         raw_pos_freq = self.total_ds_cnt
         raw_neg_freq = self.total_ds_cnt.sum() - self.total_ds_cnt
@@ -177,7 +165,7 @@ class NIHTrainDataset(Dataset):
             
     def compute_class_freqs(self):
         # total number of patients (rows)
-        labels = self.train_val_df ## What is the shape of this???
+        labels = self.train_val_df
         N = labels.shape[0]
         positive_frequencies = (labels.sum(axis = 0))/N
         negative_frequencies = 1.0 - positive_frequencies
@@ -206,7 +194,6 @@ class NIHTrainDataset(Dataset):
 
         self.all_classes = ['Cardiomegaly','Emphysema','Effusion','Hernia','Infiltration','Mass','Nodule','Atelectasis','Pneumothorax','Pleural_Thickening','Pneumonia','Fibrosis','Edema','Consolidation', 'No Finding']
         row = self.new_df.iloc[index, :]
-        # img = cv2.imread(row['image_links'])
         img = Image.open(row['image_links'])
         labels = str.split(row['Finding Labels'], '|')
         target = torch.zeros(len(self.all_classes))
@@ -232,7 +219,7 @@ class NIHTrainDataset(Dataset):
         return merged_df
     
     def get_train_val_list(self):
-        f = open("C:/Users/hb/Desktop/data/NIH/train_val_list.txt", 'r')
+        f = open("/NIH/train_val_list.txt", 'r')
         train_val_list = str.split(f.read(), '\n')
         return train_val_list
 
@@ -320,7 +307,7 @@ class NIHTestDataset(Dataset):
         return test_df
 
     def get_test_list(self):
-        f = open( os.path.join('C:/Users/hb/Desktop/data/NIH', 'test_list.txt'), 'r')
+        f = open( os.path.join('/NIH', 'test_list.txt'), 'r')
         test_list = str.split(f.read(), '\n')
         return test_list
 
@@ -331,8 +318,8 @@ class ChexpertTrainDataset(Dataset):
 
     def __init__(self,c_num, transform = None, indices = None):
         
-        csv_path = "C:/Users/hb/Desktop/data/CheXpert-v1.0-small/selected_train.csv"
-        self.dir = "C:/Users/hb/Desktop/data/"
+        csv_path = "CheXpert-v1.0-small/selected_train.csv"
+        self.dir = "/data/"
         self.transform = transform
 
         self.all_data = pd.read_csv(csv_path)
@@ -356,21 +343,9 @@ class ChexpertTrainDataset(Dataset):
     
         self.imbalance = 1 / difference_cnt.sum()
 
-        # Plot the disease distribution
-        plt.figure(figsize=(8,4))
-        plt.title('Client{} Disease Distribution'.format(c_num), fontsize=20)
-        plt.bar(self.all_classes,self.total_ds_cnt)
-        plt.tight_layout()
-        plt.gcf().subplots_adjust(bottom=0.40)
-        plt.xticks(rotation = 90)
-        plt.xlabel('Diseases')
-        plt.savefig('C:/Users/hb/Desktop/code/3.FedBalance_mp/data/ChexPert/Client{}_disease_distribution.png'.format(c_num))
-        plt.clf()
-
     def __getitem__(self, index):
 
         row = self.selecte_data.iloc[index, :]
-        # img = cv2.imread(self.dir + row['Path'])
         img = pilimg.open(self.dir + row['Path'])
         label = torch.FloatTensor(row[2:])
         gray_img = self.transform(img)
@@ -404,8 +379,8 @@ class ChexpertTestDataset(Dataset):
 
     def __init__(self, transform = None):
         
-        csv_path = "C:/Users/hb/Desktop/data/CheXpert-v1.0-small/selected_test.csv"
-        self.dir = "C:/Users/hb/Desktop/data/"
+        csv_path = "CheXpert-v1.0-small/selected_test.csv"
+        self.dir = "data/"
         self.transform = transform
 
         self.all_data = pd.read_csv(csv_path)
@@ -559,22 +534,6 @@ def partition_data(datadir, partition, n_nets, alpha):
                 idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
                 min_size = min([len(idx_j) for idx_j in idx_batch])
             
-            # Get clients' degree of data imbalances.
-            # for i in range(n_nets):
-            #     difference_cnt = client_pos_freq[i] - client_pos_freq[i].mean()
-            #     for i in range(len(difference_cnt)):
-            #         difference_cnt[i] = difference_cnt[i] * difference_cnt[i]        
-            #     for i in range(len(difference_cnt)):
-            #         difference_cnt[i] = difference_cnt[i] / difference_cnt.sum()
-            #     # Calculate the level of imbalnce
-            #     difference_cnt -= difference_cnt.mean()
-            #     for i in range(len(difference_cnt)):
-            #         difference_cnt[i] = (difference_cnt[i] * difference_cnt[i])
-            #     client_imbalances.append(1 / difference_cnt.sum())
-
-            # client_imbalances = np.array(client_imbalances)
-            # client_imbalances =  client_imbalances / client_imbalances.sum()
-            
             for j in range(n_nets):
                 np.random.shuffle(idx_batch[j]) # shuffle once more
                 net_dataidx_map[j] = idx_batch[j]
@@ -594,6 +553,7 @@ def partition_data(datadir, partition, n_nets, alpha):
             logging.info("N = " + str(N))
             class_proportions = []
             class_freq = []
+            LT = True
             
             while min_size < 10:
                 proportionss = np.random.dirichlet(np.repeat(alpha, n_nets))
@@ -606,27 +566,21 @@ def partition_data(datadir, partition, n_nets, alpha):
                 for k in range(K): # partition for the class k
                     idx_k = np.where(y_train == k)[0]
                     np.random.shuffle(idx_k)
-                    idx_k = idx_k[:long_tail[k]]
+
+                    if LT == True:
+                        idx_k = idx_k[:long_tail[k]]
 
                     proportionss = np.random.dirichlet(np.repeat(alpha, n_nets))
                     proportions = proportionss / proportionss.sum()
-                    # print(proportions)
 
                     class_proportions.append(proportions)
                     class_freq.append((proportions * len(idx_k)).astype(int))
-                    # print((proportions * len(idx_k)).astype(int))
                     class_neg_proportions.append(1 - proportions)
                     class_neg_freq.append(((1 - proportions) * len(idx_k)).astype(int))
-                    
-                    min_data = min((proportions * len(idx_k)).astype(int))
-                    # if min_data < 1 :
-                    #     min_size = 0
-                    #     break
                     
                     # Same as above
                     proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
                     # cumsum : cumulative summation
-                    # len(idx_k) : 5000
                     # proportion starting index
                     idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
 
@@ -638,19 +592,8 @@ def partition_data(datadir, partition, n_nets, alpha):
 
             client_pos_freq = np.array(class_freq)
             client_pos_freq = client_pos_freq.T
-            print(len(client_pos_freq[0]))
             client_neg_freq = np.array(class_neg_freq)
             client_neg_freq = client_neg_freq.T
-
-            for k in range(16):
-                all_classes = list(range(1, 101))
-                plt.figure(figsize=(8,4))
-                plt.title('Client{} Data Distribution'.format(k), fontsize=20)
-                plt.bar(all_classes, client_pos_freq[k])
-                plt.tight_layout()
-                plt.gcf().subplots_adjust(bottom=0.40)
-                plt.savefig('C:/Users/hb/Desktop/code/3.FedBalance_mp/data_distribution/Client{}_Data_distribution.png'.format(k))
-                plt.clf()
 
             # Get clients' degree of data imbalances.
             for i in range(n_nets):
@@ -688,6 +631,7 @@ def partition_data(datadir, partition, n_nets, alpha):
             min_size = 0
             K = class_num
             N = n_train
+            LT = True
             logging.info("N = " + str(N))
             while min_size < 10:
                 idx_batch = [[] for _ in range(n_nets)]
@@ -700,33 +644,21 @@ def partition_data(datadir, partition, n_nets, alpha):
                 for k in range(K): # partition for the class k
                     idx_k = np.where(y_train == k)[0]
                     np.random.shuffle(idx_k)
-                    # idx_k = idx_k[:long_tail[k]]
+                    if LT == True:
+                        idx_k = idx_k[:long_tail[k]]
                     ## Balance
-                    # proportions = np.array([p * (len(idx_j) < N / n_nets) for p, idx_j in zip(proportionss, idx_batch)])
-                    # p is proportion for client(scalar)
-                    # idx_j is []
-                    # (len(idx_j) < N / n_nets) is True
                     proportionss = np.random.dirichlet(np.repeat(alpha, n_nets))
                     proportions = proportionss / proportionss.sum()
-                    # print(proportions)
 
                     class_proportions.append(proportions)
                     class_freq.append((proportions * len(idx_k)).astype(int))
-                    # print((proportions * len(idx_k)).astype(int))
                     class_neg_proportions.append(1 - proportions)
                     class_neg_freq.append(((1 - proportions) * len(idx_k)).astype(int))
                     
                     min_data = min((proportions * len(idx_k)).astype(int))
-                    # if min_data < 10 :
-                    #     min_size = 0
-                    #     print(min_data)
-                    #     break
                     
                     # Same as above
                     proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
-                    # cumsum : cumulative summation
-                    # len(idx_k) : 5000
-                    # proportion starting index
                     idx_batch = [idx_j + idx.tolist() for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))]
 
                     # fivide idx_k according to the proportion
@@ -737,19 +669,8 @@ def partition_data(datadir, partition, n_nets, alpha):
 
             client_pos_freq = np.array(class_freq)
             client_pos_freq = client_pos_freq.T
-            print(client_pos_freq)
             client_neg_freq = np.array(class_neg_freq)
             client_neg_freq = client_neg_freq.T
-
-            for k in range(K):
-                all_classes = list(range(1, 11))
-                plt.figure(figsize=(8,4))
-                plt.title('Client{} Data Distribution'.format(k), fontsize=20)
-                plt.bar(all_classes, client_pos_freq[k])
-                plt.tight_layout()
-                plt.gcf().subplots_adjust(bottom=0.40)
-                plt.savefig('C:/Users/hb/Desktop/code/3.FedBalance_mp/data_distribution/Client{}_Data_distribution.png'.format(k))
-                plt.clf()
 
             # Get clients' degree of data imbalances.
             for i in range(n_nets):
